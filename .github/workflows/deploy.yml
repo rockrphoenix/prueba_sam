@@ -2,9 +2,9 @@ name: Deploy Serverless Application
 
 on:
   push:
-    branches: [main, develop, 'release/*']
+    branches: [main, master ,develop, 'release/*']
   pull_request:
-    branches: [main, develop]
+    branches: [main, master ,develop]
 
 permissions:
   id-token: write  # Necesario para OIDC
