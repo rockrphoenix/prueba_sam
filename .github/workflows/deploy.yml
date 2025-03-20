@@ -31,7 +31,7 @@ jobs:
           echo "Branch: ${{ github.ref }}"
           echo "Workflow: ${{ github.workflow }}"
           echo "Run ID: ${{ github.run_id }}"  
-      
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -60,7 +60,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_ROLE_ARN }}
 
       - name: Build with SAM
         if: github.event_name == 'push'
