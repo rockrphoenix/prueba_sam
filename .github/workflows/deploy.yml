@@ -72,6 +72,7 @@ jobs:
         run: |
           sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
             --stack-name \${{ vars.STACK_NAME }}-\${{ vars.ENVIRONMENT }} \
+            --resolve-s3 \
             --parameter-overrides "Environment=\${{ vars.ENVIRONMENT }} \
             MongoDbUri=\${{ secrets.MONGODB_URI }} \
             DatabaseName=\${{ vars.DATABASE_NAME }} \
