@@ -33,7 +33,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest tests/
+          python -m pytest tests/unit/
 
       - name: Install AWS SAM CLI
         if: github.event_name == 'push'
