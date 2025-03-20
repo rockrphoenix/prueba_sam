@@ -71,16 +71,17 @@ jobs:
         if: github.event_name == 'push'
         run: |
           sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
-            --stack-name \${{ vars.STACK_NAME }}-\${{ vars.ENVIRONMENT }} \
-            --resolve-s3 \
-            --parameter-overrides "Environment=\${{ vars.ENVIRONMENT }} \
-            MongoDbUri=\${{ secrets.MONGODB_URI }} \
-            DatabaseName=\${{ vars.DATABASE_NAME }} \
-            CollectionName=\${{ vars.COLLECTION_NAME }} \
-            ApiGatewayType=\${{ vars.API_GATEWAY_TYPE }} \
-            ExistingApiId=\${{ vars.EXISTING_API_ID }} \
-            ExistingApiStageName=\${{ vars.EXISTING_API_STAGE_NAME }} \
-            ExistingVpcId=\${{ vars.EXISTING_VPC_ID }} \
-            ExistingSubnetIds=\${{ vars.EXISTING_SUBNET_IDS }} \
-            ExistingSecurityGroupId=\${{ vars.EXISTING_SECURITY_GROUP_ID }} \
-            ExistingLayerArn=\${{ vars.EXISTING_LAYER_ARN }}"
+          --stack-name ${{ vars.STACK_NAME }}-${{ vars.ENVIRONMENT }} \
+          --resolve-s3 \
+          --parameter-overrides \
+            Environment=${{ vars.ENVIRONMENT }} \
+            MongoDbUri=${{ secrets.MONGODB_URI }} \
+            DatabaseName=${{ vars.DATABASE_NAME }} \
+            CollectionName=${{ vars.COLLECTION_NAME }} \
+            ApiGatewayType=${{ vars.API_GATEWAY_TYPE }} \
+            ExistingApiId=${{ vars.EXISTING_API_ID }} \
+            ExistingApiStageName=${{ vars.EXISTING_API_STAGE_NAME }} \
+            ExistingVpcId=${{ vars.EXISTING_VPC_ID }} \
+            ExistingSubnetIds=${{ vars.EXISTING_SUBNET_IDS }} \
+            ExistingSecurityGroupId=${{ vars.EXISTING_SECURITY_GROUP_ID }} \
+            ExistingLayerArn=${{ vars.EXISTING_LAYER_ARN }}
