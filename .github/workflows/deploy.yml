@@ -45,7 +45,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Build with SAM
         if: github.event_name == 'push'
