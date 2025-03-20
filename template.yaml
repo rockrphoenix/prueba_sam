@@ -1,60 +1,153 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  prueba-sam
+Description: Aplicación Serverless que se integra con infraestructura existente
 
-  Sample SAM Template for prueba-sam
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, test, stage, prod]
+    Description: Entorno de despliegue
 
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-Globals:
-  Function:
-    Timeout: 3
+  MongoDbUri:
+    Type: String
+    NoEcho: true
+    Description: URI de conexión a MongoDB Atlas
 
-    Tracing: Active
-    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. Learn more here https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
-    LoggingConfig:
-      LogFormat: JSON
-  Api:
-    TracingEnabled: true
+  DatabaseName:
+    Type: String
+    Default: sampledb
+    Description: Nombre de la base de datos MongoDB
+
+  CollectionName:
+    Type: String
+    Default: samples
+    Description: Nombre de la colección MongoDB
+
+  ApiGatewayType:
+    Type: String
+    Default: http
+    AllowedValues: [http, rest]
+    Description: Tipo de API Gateway existente
+
+  ExistingApiId:
+    Type: String
+    Description: ID de la API Gateway existente
+
+  ExistingApiStageName:
+    Type: String
+    Default: dev
+    Description: Nombre del stage de la API Gateway existente
+
+  ExistingVpcId:
+    Type: String
+    Description: ID de la VPC existente
+
+  ExistingSubnetIds:
+    Type: CommaDelimitedList
+    Description: Lista separada por comas de IDs de subredes existentes
+
+  ExistingSecurityGroupId:
+    Type: String
+    Description: ID del grupo de seguridad existente
+
+  ExistingLayerArn:
+    Type: String
+    Description: ARN de la capa (layer) existente con las dependencias
+
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  # Secreto para MongoDB
+  MongoDBSecret:
+    Type: AWS::SecretsManager::Secret
     Properties:
+      Name: !Sub '${AWS::StackName}-mongodb-${Environment}'
+      Description: Credenciales de MongoDB
+      SecretString: !Sub '{"uri": "${MongoDbUri}"}'
+
+  # Función Lambda (sin eventos API Gateway)
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-${Environment}'
       CodeUri: hello_world/
       Handler: app.lambda_handler
       Runtime: python3.11
-      Architectures:
-      - x86_64
-      Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /hello
-            Method: get
+      Architectures: [x86_64]
+      MemorySize: 256
+      Timeout: 10
+      Environment:
+        Variables:
+          MONGODB_SECRET_ARN: !Ref MongoDBSecret
+          DB_NAME: !Ref DatabaseName
+          COLLECTION_NAME: !Ref CollectionName
+          ENVIRONMENT: !Ref Environment
+          LOG_LEVEL: INFO
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref ExistingSecurityGroupId
+        SubnetIds: !Ref ExistingSubnetIds
+      Layers:
+        - !Ref ExistingLayerArn
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DeleteNetworkInterface
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:DescribeSecret
+              Resource: !Ref MongoDBSecret
 
-  ApplicationResourceGroup:
-    Type: AWS::ResourceGroups::Group
+  # Grupo de logs para Lambda
+  HelloWorldFunctionLogs:
+    Type: AWS::Logs::LogGroup
     Properties:
-      Name:
-        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
-      ResourceQuery:
-        Type: CLOUDFORMATION_STACK_1_0
-  ApplicationInsightsMonitoring:
-    Type: AWS::ApplicationInsights::Application
+      LogGroupName: !Sub '/aws/lambda/${HelloWorldFunction}'
+      RetentionInDays: 7
+
+  # Integración con API Gateway HTTP existente
+  ApiGatewayIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Condition: IsHttpApi
     Properties:
-      ResourceGroupName:
-        Ref: ApplicationResourceGroup
-      AutoConfigurationEnabled: 'true'
+      ApiId: !Ref ExistingApiId
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}/invocations'
+      PayloadFormatVersion: '2.0'
+      IntegrationMethod: POST
+
+  # Ruta para API Gateway HTTP
+  ApiGatewayRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: IsHttpApi
+    Properties:
+      ApiId: !Ref ExistingApiId
+      RouteKey: 'GET /hello'
+      Target: !Sub 'integrations/${ApiGatewayIntegration}'
+
+  # Permiso para que API Gateway invoque la función Lambda
+  ApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref HelloWorldFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/*/hello'
+
+Conditions:
+  IsHttpApi: !Equals [!Ref ApiGatewayType, "http"]
+  IsRestApi: !Equals [!Ref ApiGatewayType, "rest"]
+
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: API Gateway endpoint URL for Prod stage for Hello World function
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
   HelloWorldFunction:
-    Description: Hello World Lambda Function ARN
+    Description: ARN de la función Lambda
     Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: Implicit IAM Role created for Hello World function
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+
+  ApiEndpoint:
+    Description: URL del endpoint (tendrás que agregarlo manualmente a la API existente)
+    Value: !Sub 'https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/${ExistingApiStageName}/hello'

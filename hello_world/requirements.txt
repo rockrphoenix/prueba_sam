@@ -1,1 +1,6 @@
 requests
+pymongo
+dnspython
+python-dotenv
+pytz
+cerberus
