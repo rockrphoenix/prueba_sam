@@ -14,7 +14,7 @@ jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
     # Determinar entorno basado en la rama
-    environment: \${{ github.ref == 'refs/heads/main' && 'prod' || github.ref == 'refs/heads/develop' && 'dev' || startsWith(github.ref, 'refs/heads/release/') && 'stage' || 'test' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || github.ref == 'refs/heads/develop' && 'dev' || startsWith(github.ref, 'refs/heads/release/') && 'stage' || 'test' }}
 
     steps:
       - name: Debug Environment Variables
