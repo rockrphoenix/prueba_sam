@@ -114,6 +114,8 @@ Resources:
   ApiGatewayIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Condition: IsHttpApi
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       ApiId: !Ref ExistingApiId
       IntegrationType: AWS_PROXY
@@ -125,6 +127,8 @@ Resources:
   ApiGatewayRoute:
     Type: AWS::ApiGatewayV2::Route
     Condition: IsHttpApi
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       ApiId: !Ref ExistingApiId
       RouteKey: 'GET /hello'
